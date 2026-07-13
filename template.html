@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>GitHub Display</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --canvas: #0d1117;
+    --border: #30363d;
+    --ink: #e6edf3;
+    --muted: #8d96a0;
+    --good: #238636;
+    --bad: #b62324;
+    --card: #161b22;
+  }
+  body { width: 640px; height: 480px; overflow: hidden; background: var(--canvas); }
+  .screen {
+    width: 640px;
+    height: 480px;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    gap: 12px;
+    color: var(--ink);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  .hdr { display: flex; justify-content: space-between; align-items: baseline; }
+  .hdr .user { font-size: 15px; font-weight: 700; }
+  .hdr .user span { color: var(--muted); font-weight: 400; }
+  .hdr .stamp { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .graph { display: grid; gap: 4px; }
+  .months {
+    display: grid;
+    gap: 3px;
+    font-size: 10px;
+    color: var(--muted);
+    height: 12px;
+    overflow: hidden;
+  }
+  .months span { grid-row: 1; white-space: nowrap; }
+  .cells {
+    display: grid;
+    grid-template-rows: repeat(7, 1fr);
+    grid-auto-flow: column;
+    gap: 3px;
+  }
+  .cells i { aspect-ratio: 1; border-radius: 2px; background: #161b22; }
+  .cells .l1 { background: #0e4429; }
+  .cells .l2 { background: #006d32; }
+  .cells .l3 { background: #26a641; }
+  .cells .l4 { background: #39d353; }
+
+  .bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 0; }
+  .card {
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px;
+  }
+  /* committed = quiet (same look as the streaks card); not committed = loud red */
+  .today { background: var(--card); border: 1px solid var(--border); }
+  .today.no { background: var(--bad); border-color: transparent; }
+  .today svg { width: 96px; height: 96px; margin-bottom: 8px; }
+  .today .label { font-size: 17px; font-weight: 700; }
+  .today .sub { font-size: 12px; opacity: .85; font-variant-numeric: tabular-nums; }
+
+  .streaks {
+    background: var(--card);
+    border: 1px solid var(--border);
+    align-items: stretch;
+    justify-content: space-evenly;
+    gap: 0;
+  }
+  .stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .stat .eyebrow { font-size: 11px; letter-spacing: .12em; color: var(--muted); }
+  .stat .num { font-size: 64px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat .unit { font-size: 12px; color: var(--muted); }
+  .stat.max .num { font-size: 34px; color: var(--muted); }
+  .divider { border-top: 1px solid var(--border); margin: 10px 24px; }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="hdr">
+    <div class="user">__USER__ <span>· github</span></div>
+    <div class="stamp" id="stamp"></div>
+  </div>
+
+  <div class="graph">
+    <div class="months" id="months"></div>
+    <div class="cells" id="cells"></div>
+  </div>
+
+  <div class="bottom">
+    <div class="card today" id="today">
+      <svg id="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round"></svg>
+      <div class="label" id="todayLabel"></div>
+      <div class="sub" id="todayDate"></div>
+    </div>
+
+    <div class="card streaks">
+      <div class="stat">
+        <div class="eyebrow">CURRENT STREAK</div>
+        <div class="num" id="curStreak">–</div>
+        <div class="unit">days</div>
+      </div>
+      <div class="divider"></div>
+      <div class="stat max">
+        <div class="eyebrow">BEST</div>
+        <div class="num" id="bestStreak">–</div>
+        <div class="unit">days</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // __START__, __LEVELS__ and __MONTHS__ are injected by generate.py on every render
+  const START = '__START__';
+  const LEVELS = '__LEVELS__';
+  const SHOW_MONTHS = __MONTHS__; // 12 = full year; 6 = half year with bigger cells
+
+  // visual crop of the graph (streaks still computed over the full year)
+  let lvl = LEVELS;
+  const graphStart = new Date(START + 'T00:00:00');
+  if (SHOW_MONTHS < 12) {
+    const keep = Math.round(SHOW_MONTHS * 30.44);
+    const cut = Math.max(0, Math.floor((LEVELS.length - keep) / 7) * 7); // multiple of 7 keeps the sunday-to-saturday alignment
+    lvl = LEVELS.slice(cut);
+    graphStart.setDate(graphStart.getDate() + cut);
+  }
+  const nWeeks = Math.ceil(lvl.length / 7);
+
+  const cells = document.getElementById('cells');
+  cells.style.gridTemplateColumns = `repeat(${nWeeks}, 1fr)`;
+  for (const ch of lvl) {
+    const el = document.createElement('i');
+    if (ch !== '0') el.className = 'l' + ch;
+    cells.appendChild(el);
+  }
+
+  // streaks: contributed day = level > 0 (1-year calendar window)
+  const days = [...LEVELS].map(ch => ch !== '0');
+  const committedToday = days[days.length - 1];
+  let cur = 0;
+  for (let i = days.length - (committedToday ? 1 : 2); i >= 0 && days[i]; i--) cur++;
+  let best = 0, run = 0;
+  for (const d of days) { run = d ? run + 1 : 0; if (run > best) best = run; }
+  document.getElementById('curStreak').textContent = cur;
+  document.getElementById('bestStreak').textContent = best;
+
+  const months = document.getElementById('months');
+  months.style.gridTemplateColumns = `repeat(${nWeeks}, 1fr)`;
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  let lastMonth = graphStart.getMonth();
+  for (let w = 1; w < nWeeks; w++) {
+    const d = new Date(graphStart); d.setDate(d.getDate() + w * 7);
+    if (d.getMonth() !== lastMonth) {
+      lastMonth = d.getMonth();
+      const s = document.createElement('span');
+      s.textContent = MONTHS[lastMonth];
+      s.style.gridColumn = w + 1;
+      months.appendChild(s);
+    }
+  }
+
+  const lastDate = new Date(START + 'T00:00:00'); lastDate.setDate(lastDate.getDate() + LEVELS.length - 1);
+  document.getElementById('stamp').textContent =
+    'updated ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  document.getElementById('todayDate').textContent =
+    lastDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit' });
+
+  const CHECK = '<circle cx="12" cy="12" r="10"/><path d="m8.5 12.5 2.5 2.5 4.5-5.5"/>';
+  const BLOCK = '<circle cx="12" cy="12" r="10"/><path d="m5.5 5.5 13 13"/>';
+  document.getElementById('today').classList.toggle('no', !committedToday);
+  document.getElementById('icon').innerHTML = committedToday ? CHECK : BLOCK;
+  document.getElementById('todayLabel').textContent =
+    committedToday ? 'Committed today' : 'No commits today';
+</script>
+</body>
+</html>

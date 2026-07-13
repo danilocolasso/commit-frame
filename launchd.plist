@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.danilocolasso.commit-frame</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/danilocolasso/Projects/commit-frame/run.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/danilocolasso/Library/Logs/commit-frame.log</string>
+    <key>StandardErrPath</key>
+    <string>/Users/danilocolasso/Library/Logs/commit-frame.log</string>
+</dict>
+</plist>
