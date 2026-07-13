@@ -12,6 +12,8 @@ from pathlib import Path
 from PIL import Image
 
 USER = "danilocolasso"
+WIDTH = 640
+HEIGHT = 480
 VARIANTS = {"github-dashboard.png": 12}
 CHROMIUM = "/opt/homebrew/bin/chromium"
 BASE = Path(__file__).parent
@@ -31,6 +33,10 @@ template = (
     .replace("__USER__", USER)
     .replace("__START__", start)
     .replace("__LEVELS__", levels)
+    .replace("__W__", str(WIDTH))
+    .replace("__H__", str(HEIGHT))
+    # the layout is designed at 640x480; zoom scales it to any screen, letterboxed
+    .replace("__ZOOM__", f"{min(WIDTH / 640, HEIGHT / 480):.4f}")
 )
 
 OUT_DIR.mkdir(exist_ok=True)
@@ -43,11 +49,11 @@ for name, months in VARIANTS.items():
         # ponytail: a 640x480 window renders a broken layout on this chromium; 640x800 + crop is the proven path
         subprocess.run(
             [CHROMIUM, "--headless", "--disable-gpu", "--hide-scrollbars",
-             f"--screenshot={shot}", "--window-size=640,800", f"file://{dash}"],
+             f"--screenshot={shot}", "--window-size={},{}".format(WIDTH, HEIGHT + 320), f"file://{dash}"],
             check=True, capture_output=True, timeout=60,
         )
         tmp = out.with_suffix(".tmp.png")
-        Image.open(shot).crop((0, 0, 640, 480)).save(tmp)
+        Image.open(shot).crop((0, 0, WIDTH, HEIGHT)).save(tmp)
         tmp.replace(out)  # atomic swap: the client never downloads a half-written png
 
 print(f"ok: {start} +{len(levels)} days -> {', '.join(VARIANTS)}")

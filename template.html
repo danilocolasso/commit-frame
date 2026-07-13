@@ -14,10 +14,13 @@
     --bad: #b62324;
     --card: #161b22;
   }
-  body { width: 640px; height: 480px; overflow: hidden; background: var(--canvas); }
+  body { width: __W__px; height: __H__px; overflow: hidden; background: var(--canvas);
+         display: flex; align-items: center; justify-content: center; }
   .screen {
     width: 640px;
     height: 480px;
+    zoom: __ZOOM__;
+    flex: none;
     padding: 14px 16px;
     display: grid;
     grid-template-rows: auto auto 1fr;
