@@ -11,12 +11,16 @@ from pathlib import Path
 
 from PIL import Image
 
-USER = "danilocolasso"
+USER = "johndoe"
 WIDTH = 640
 HEIGHT = 480
 VARIANTS = {"github-dashboard.png": 12}
-CHROMIUM = "/opt/homebrew/bin/chromium"
+CHROMIUM = "chromium"
 BASE = Path(__file__).parent
+try:
+    from config import *  # local overrides written by `make setup` (untracked)
+except ImportError:
+    pass
 OUT_DIR = BASE / "out"
 
 url = f"https://github.com/users/{USER}/contributions"

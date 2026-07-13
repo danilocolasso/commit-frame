@@ -9,7 +9,8 @@ Everything `make setup` does, by hand.
 
 ## 2. Configure
 
-Constants at the top of `generate.py`:
+Defaults live at the top of `generate.py`; local overrides go in an
+untracked `config.py` (what `make setup` writes):
 
 | Constant | Meaning |
 |---|---|

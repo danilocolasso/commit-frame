@@ -8,7 +8,7 @@ B='\033[1m'; DIM='\033[2m'; GRN='\033[32m'; CYN='\033[36m'; RED='\033[31m'; YLW=
 printf "\n  ${B}COMMIT FRAME${RST} ${DIM}setup${RST}\n"
 printf "  ${DIM}────────────────────────────────────────${RST}\n\n"
 
-cur_user=$(grep -o 'USER = "[^"]*"' generate.py | cut -d'"' -f2)
+cur_user=$(grep -ho 'USER = "[^"]*"' config.py generate.py 2>/dev/null | head -1 | cut -d'"' -f2)
 printf "  ${CYN}GitHub username${RST} ${DIM}[%s]${RST}\n  > " "$cur_user"
 read -r user
 user=${user:-$cur_user}
@@ -23,7 +23,7 @@ while :; do
     esac
 done
 
-chromium=$(grep -o 'CHROMIUM = "[^"]*"' generate.py | cut -d'"' -f2)
+chromium=$(grep -ho 'CHROMIUM = "[^"]*"' config.py generate.py 2>/dev/null | head -1 | cut -d'"' -f2)
 if [ ! -x "$chromium" ]; then
     for c in "$(command -v chromium 2>/dev/null || true)" \
              /opt/homebrew/bin/chromium \
@@ -50,19 +50,13 @@ else
     esac
 fi
 
-python3 - "$user" "$chromium" "$width" "$height" <<'EOF'
-import re, sys
-from pathlib import Path
-user, chromium, width, height = sys.argv[1:5]
-p = Path("generate.py")
-t = p.read_text()
-t = re.sub(r'^USER = .*', f'USER = "{user}"', t, flags=re.M)
-t = re.sub(r'^CHROMIUM = .*', f'CHROMIUM = "{chromium}"', t, flags=re.M)
-t = re.sub(r'^WIDTH = .*', f'WIDTH = {width}', t, flags=re.M)
-t = re.sub(r'^HEIGHT = .*', f'HEIGHT = {height}', t, flags=re.M)
-p.write_text(t)
+cat > config.py <<EOF
+USER = "$user"
+WIDTH = $width
+HEIGHT = $height
+CHROMIUM = "$chromium"
 EOF
-printf "  ${GRN}✓${RST} generate.py configured for ${B}%s${RST} at ${B}%sx%s${RST}\n" "$user" "$width" "$height"
+printf "  ${GRN}✓${RST} config.py written for ${B}%s${RST} at ${B}%sx%s${RST}\n" "$user" "$width" "$height"
 
 printf "\n  ${DIM}test render...${RST}\n"
 python3 generate.py
